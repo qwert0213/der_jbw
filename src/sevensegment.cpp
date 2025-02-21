@@ -17,10 +17,10 @@ public:
         client_ = this->create_client<turtlesim::srv::TeleportAbsolute>("/turtle1/teleport_absolute");
         pen_client_ = this->create_client<turtlesim::srv::SetPen>("/turtle1/set_pen");
 
-        draw_seven_segment_display(0.0f);
-        draw_seven_segment_display(1.8f);
-        draw_seven_segment_display(4.6f);
-        draw_seven_segment_display(6.4f);
+        draw_seven_segment_display(0.0f, 8);
+        draw_seven_segment_display(1.8f, 9);
+        draw_seven_segment_display(4.6f, 0);
+        draw_seven_segment_display(6.4f, 5);
     }
 
 private:
@@ -37,19 +37,14 @@ private:
         auto result = client_->async_send_request(request);
     }
 
-    void set_pen(bool enable)
+    void set_pen(bool enable, bool red)
     {
         auto pen_request = std::make_shared<turtlesim::srv::SetPen::Request>();
-        pen_request->r = 0;
+        pen_request->r = red ? 255 : 0;
         pen_request->g = 0;
         pen_request->b = 0;
-        if (!enable) {
-            pen_request->width = 0;
-            pen_request->off = true;
-        } else {
-            pen_request->width = 1;
-            pen_request->off = false;
-        }
+        pen_request->width = enable ? 3 : 0;
+        pen_request->off = !enable;
         auto result = pen_client_->async_send_request(pen_request);
     }
 
@@ -63,12 +58,13 @@ private:
         cmd_pub_->publish(msg);
     }
 
-    void draw_seven_segment_display(float offset)
+    void draw_seven_segment_display(float offset, int digit)
     {
         float start1_x = 0.3f, start1_y = 8.0f;
         float draw_length = 1.5f;
-        set_pen(false);
+        set_pen(false, false);
         move_turtle(start1_x + offset, start1_y, 0.0f);
+    
         struct Segment { float x, y, angle; };
         Segment segments[] = {
             { start1_x + offset, start1_y, 0.0f },    // Felső vízszintes
@@ -77,15 +73,34 @@ private:
             { start1_x + draw_length + offset, start1_y - 2* draw_length, M_PI }, // Alsó vízszintes
             { start1_x + offset, start1_y - 2* draw_length, M_PI/2 }, // Bal alsó függőleges
             { start1_x + offset, start1_y -draw_length, M_PI/2 },  // Bal felső függőleges
-            { start1_x + offset, start1_y - draw_length, 0.0f }   // Középső vízszintes
+            { start1_x + offset, start1_y - draw_length, 0.0f }   // Középső vízszintes 
         };
-
-        for (const auto& segment : segments)
+    
+        bool segment_map[10][7] = {
+            {1, 1, 1, 1, 1, 1, 0}, // 0
+            {0, 1, 1, 0, 0, 0, 0}, // 1
+            {1, 1, 0, 1, 1, 0, 1}, // 2
+            {1, 1, 1, 1, 0, 0, 1}, // 3
+            {0, 1, 1, 0, 0, 1, 1}, // 4
+            {1, 0, 1, 1, 0, 1, 1}, // 5
+            {1, 0, 1, 1, 1, 1, 1}, // 6
+            {1, 1, 1, 0, 0, 0, 0}, // 7
+            {1, 1, 1, 1, 1, 1, 1}, // 8
+            {1, 1, 1, 1, 0, 1, 1}  // 9
+        };
+    
+        for (int i = 0; i < 7; ++i)
         {
-            set_pen(true);
-            move_turtle(segment.x, segment.y, segment.angle);
+            if (i == 6) {
+                set_pen(false, false);
+                move_turtle(segments[i].x, segments[i].y, segments[i].angle);
+            }
+            set_pen(true, segment_map[digit][i]); 
+            move_turtle(segments[i].x, segments[i].y, segments[i].angle);
             draw_line(draw_length, 5.0f);
         }
+        set_pen(false, false);
+        move_turtle(4.05f, 6.5f, M_PI/2);
     }
 };
 
