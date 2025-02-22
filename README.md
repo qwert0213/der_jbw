@@ -26,15 +26,13 @@ cd ~/ros2_ws
 colcon build --packages-select der_jbw --symlink-install
 ```
 
-<details>
-<summary> Don't forget to source before ROS commands.</summary>
-
-```bash
-source ~/ros2_ws/install/setup.bash
-```
-
-</details>
+### Start turtlesim
 
 ```r
-ros2 launch der_jbw launch_example1.launch.py
+ros2 run turtlesim turtlesim_node
+```
+
+### On a different terminal start drawing the time
+```r
+ros2 run der_jbw sevensegment
 ```
