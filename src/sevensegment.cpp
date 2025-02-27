@@ -1,12 +1,12 @@
 #include <chrono>
 #include <memory>
-#include <iomanip>
-#include <ctime>
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "turtlesim/srv/teleport_absolute.hpp"
 #include "turtlesim/srv/set_pen.hpp"
 #include "math.h"
+#include <iomanip>
+#include <ctime>
 
 using namespace std::chrono_literals;
 
@@ -19,23 +19,19 @@ public:
         client_ = this->create_client<turtlesim::srv::TeleportAbsolute>("/turtle1/teleport_absolute");
         pen_client_ = this->create_client<turtlesim::srv::SetPen>("/turtle1/set_pen");
     }
-    
-    int drawn_hour_tens;
-    int drawn_hour_ones;
-    int drawn_minute_tens;
-    int drawn_minute_ones;
-
     void draw_time()
     {
         auto current_time = std::chrono::system_clock::now();
         auto current_time_t = std::chrono::system_clock::to_time_t(current_time);
         std::tm *time_info = std::localtime(&current_time_t);
+
         int hour = time_info->tm_hour;
         int minute = time_info->tm_min;
         int hour_tens = hour / 10;
         int hour_ones = hour % 10;
         int minute_tens = minute / 10;
         int minute_ones = minute % 10;
+        
         if (hour_tens != drawn_hour_tens){
             draw_hour_tens(hour_tens);
             drawn_hour_tens = hour_tens;
@@ -59,6 +55,11 @@ private:
     rclcpp::Client<turtlesim::srv::TeleportAbsolute>::SharedPtr client_;
     rclcpp::Client<turtlesim::srv::SetPen>::SharedPtr pen_client_;
 
+    int drawn_hour_tens;
+    int drawn_hour_ones;
+    int drawn_minute_tens;
+    int drawn_minute_ones;
+
     void move_turtle(float x, float y, float theta)
     {
         auto request = std::make_shared<turtlesim::srv::TeleportAbsolute::Request>();
@@ -79,11 +80,12 @@ private:
         auto result = pen_client_->async_send_request(pen_request);
     }
 
-    void draw_line(float speed)
+    void draw_line(float distance, float speed)
     {
         auto msg = geometry_msgs::msg::Twist();
         msg.linear.x = speed;
         cmd_pub_->publish(msg);
+        rclcpp::sleep_for(std::chrono::milliseconds(static_cast<int>(distance / speed * 1000)));
         msg.linear.x = 0;
         cmd_pub_->publish(msg);
     }
@@ -127,7 +129,7 @@ private:
             }
             set_pen(true, segment_map[digit][i]); 
             move_turtle(segments[i].x, segments[i].y, segments[i].angle);
-            draw_line(draw_speed);
+            draw_line(draw_length, draw_speed);
         }
         set_pen(false, false);
         move_turtle(4.05f, 6.5f, M_PI/2);
